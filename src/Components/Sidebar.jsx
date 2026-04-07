@@ -1,0 +1,149 @@
+import PropTypes from 'prop-types';
+import { useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Avatar,
+  Box,
+  Button,
+  Divider,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Stack,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import ChatRoundedIcon from '@mui/icons-material/ChatRounded';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
+import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import { useAuth } from '../context/AuthContext';
+import { ROUTES } from '../constants/routes';
+
+const DRAWER_WIDTH = 258;
+const DRAWER_COLLAPSED = 72;
+
+export default function Sidebar({ desktopCollapsed, mobileOpen, onCloseMobile }) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { clearAuth } = useAuth();
+
+  const menuItems = useMemo(
+    () => [
+      { label: 'Home', path: ROUTES.HOME, icon: <HomeRoundedIcon fontSize="small" /> },
+      { label: 'WhatsApp', path: ROUTES.WHATSAPP, icon: <ChatRoundedIcon fontSize="small" /> },
+      { label: 'Send Message', path: ROUTES.WHATSAPP_SEND, icon: <SendRoundedIcon fontSize="small" /> },
+      { label: 'Broadcast', path: ROUTES.WHATSAPP_BULK, icon: <GroupsRoundedIcon fontSize="small" /> },
+      { label: 'Flow Builder', path: ROUTES.FLOW_BUILDER, icon: <AccountTreeRoundedIcon fontSize="small" /> },
+    ],
+    [],
+  );
+
+  const handleNavigate = (path) => {
+    navigate(path);
+    onCloseMobile();
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    onCloseMobile();
+    navigate(ROUTES.LOGIN);
+  };
+
+  const drawerContent = (
+    <Stack sx={{ height: '100%', bgcolor: '#0f172a', color: '#e2e8f0' }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1, py: 1.1 }}>
+        <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
+          <Avatar sx={{ bgcolor: '#25d366', color: '#052e16', width: 34, height: 34, fontWeight: 800 }}>W</Avatar>
+          {!desktopCollapsed && (
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" fontWeight={700} noWrap color="#f8fafc">WhatsApp CRM</Typography>
+              <Typography variant="caption" color="rgba(226,232,240,0.72)" noWrap>Focused messaging workspace</Typography>
+            </Box>
+          )}
+        </Stack>
+      </Stack>
+      <Divider sx={{ borderColor: 'rgba(148,163,184,0.18)' }} />
+
+      <List sx={{ py: 0.75, px: 0.75, overflowY: 'auto', flexGrow: 1 }}>
+        {menuItems.map((item) => {
+          const selected = pathname === item.path || pathname.startsWith(`${item.path}/`);
+          return (
+            <Tooltip key={item.path} title={desktopCollapsed ? item.label : ''} placement="right">
+              <ListItemButton
+                selected={selected}
+                onClick={() => handleNavigate(item.path)}
+                sx={{
+                  minHeight: 36,
+                  mb: 0.45,
+                  borderRadius: 2,
+                  '&.Mui-selected': { bgcolor: 'rgba(37,211,102,0.18)', color: '#f8fafc' },
+                  '&:hover': { bgcolor: 'rgba(37,211,102,0.10)' },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 30, color: selected ? '#25d366' : 'rgba(226,232,240,0.72)' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!desktopCollapsed && (
+                  <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }} />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          );
+        })}
+      </List>
+
+      <Box sx={{ p: 1 }}>
+        <Button fullWidth color="inherit" variant="outlined" startIcon={<LogoutRoundedIcon fontSize="small" />} onClick={handleLogout}>
+          {!desktopCollapsed ? 'Logout' : ''}
+        </Button>
+      </Box>
+    </Stack>
+  );
+
+  return (
+    <>
+      <Drawer
+        variant="permanent"
+        open
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: desktopCollapsed ? DRAWER_COLLAPSED : DRAWER_WIDTH,
+          '& .MuiDrawer-paper': {
+            width: desktopCollapsed ? DRAWER_COLLAPSED : DRAWER_WIDTH,
+            overflowX: 'hidden',
+            transition: (theme) => theme.transitions.create('width'),
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onCloseMobile}
+        ModalProps={{ keepMounted: true }}
+        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
+      >
+        {drawerContent}
+      </Drawer>
+    </>
+  );
+}
+
+Sidebar.propTypes = {
+  desktopCollapsed: PropTypes.bool,
+  mobileOpen: PropTypes.bool,
+  onCloseMobile: PropTypes.func,
+};
+
+Sidebar.defaultProps = {
+  desktopCollapsed: false,
+  mobileOpen: false,
+  onCloseMobile: () => {},
+};
