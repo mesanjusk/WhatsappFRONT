@@ -1,47 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { whatsappCloudService } from '../services/whatsappCloudService';
 import { parseApiError } from '../utils/parseApiError';
-
-const normalizeTemplates = (response) => {
-  const candidates = [
-    response,
-    response?.templates,
-    response?.items,
-    response?.data,
-    response?.data?.templates,
-    response?.data?.items,
-    response?.data?.data,
-    response?.data?.data?.templates,
-    response?.data?.data?.items,
-  ];
-
-  const list = candidates.find(Array.isArray) || [];
-
-  return (list || [])
-    .filter(Boolean)
-    .map((template) => {
-      const Components = Array.isArray(template?.Components) ? template.Components : [];
-      const bodyComponent = Components.find((component) =>
-        String(component?.type || '').toUpperCase() === 'BODY'
-      );
-
-      return {
-        ...template,
-        name: template?.name || template?.templateName || 'unnamed_template',
-        language:
-          (typeof template?.language === 'string' ? template.language : template?.language?.code) ||
-          template?.lang ||
-          template?.languageCode ||
-          'en',
-        category: String(template?.category || 'utility').toLowerCase(),
-        body:
-          template?.body ||
-          template?.content ||
-          bodyComponent?.text ||
-          'Template preview unavailable.',
-      };
-    });
-};
+import { normalizeTemplatesResponse } from '../utils/whatsappTemplates';
 
 let templatesCache = null;
 let inFlightPromise = null;
@@ -73,7 +33,7 @@ export function useTemplates() {
     inFlightPromise = (async () => {
       try {
         const response = await whatsappCloudService.getTemplates();
-        const normalized = normalizeTemplates(response);
+        const normalized = normalizeTemplatesResponse(response);
         templatesCache = normalized;
         return normalized;
       } catch (fetchError) {

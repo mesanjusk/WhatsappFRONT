@@ -1,21 +1,32 @@
 import apiClient from '../apiClient';
+import { getTemplateVariableCount } from '../utils/whatsappTemplates';
+
+const buildBodyParameters = (template) => {
+  const variableCount = getTemplateVariableCount(template);
+  if (!variableCount) return [];
+
+  const rawParameters = Array.isArray(template?.parameters) ? template.parameters : [];
+  return Array.from({ length: variableCount }).map((_, index) => ({
+    type: 'text',
+    text: String(rawParameters[index] ?? ''),
+  }));
+};
 
 export const buildTemplatePayload = ({ to, template }) => {
-  const parameters = Array.isArray(template?.parameters) ? template.parameters : [];
+  const bodyParameters = buildBodyParameters(template);
 
   return {
     to,
     template_name: template?.name,
     language: template?.language,
-    Components: [
-      {
-        type: 'body',
-        parameters: parameters.map((value) => ({
-          type: 'text',
-          text: String(value ?? ''),
-        })),
-      },
-    ],
+    components: bodyParameters.length
+      ? [
+          {
+            type: 'body',
+            parameters: bodyParameters,
+          },
+        ]
+      : [],
   };
 };
 
@@ -64,23 +75,14 @@ const tryAutoReplyEndpoints = async (requestFactory) => {
 };
 
 export const fetchWhatsAppStatus = () => apiClient.get('/api/whatsapp/status');
-
 export const fetchWhatsAppMessages = () => apiClient.get('/api/whatsapp/messages');
-
 export const fetchWhatsAppTemplates = () => apiClient.get('/api/whatsapp/templates');
-
-export const sendWhatsAppTextMessage = (payload) =>
-  apiClient.post('/api/whatsapp/send-text', payload);
-
-export const sendWhatsAppTemplateMessage = (payload) =>
-  apiClient.post('/api/whatsapp/send-template', payload);
-
-export const sendWhatsAppFlowMessage = (payload) =>
-  apiClient.post('/api/whatsapp/send-flow', payload);
+export const sendWhatsAppTextMessage = (payload) => apiClient.post('/api/whatsapp/send-text', payload);
+export const sendWhatsAppTemplateMessage = (payload) => apiClient.post('/api/whatsapp/send-template', payload);
+export const sendWhatsAppFlowMessage = (payload) => apiClient.post('/api/whatsapp/send-flow', payload);
 
 export const sendWhatsAppMediaMessage = (payload) => {
-  const isFormData =
-    typeof FormData !== 'undefined' && payload instanceof FormData;
+  const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
 
   return apiClient.post(
     '/api/whatsapp/send-media',
@@ -91,58 +93,32 @@ export const sendWhatsAppMediaMessage = (payload) => {
             'Content-Type': 'multipart/form-data',
           },
         }
-      : undefined
+      : undefined,
   );
 };
 
-export const getAutoReplyRules = () =>
-  tryAutoReplyEndpoints((endpoint) => apiClient.get(endpoint));
-
+export const getAutoReplyRules = () => tryAutoReplyEndpoints((endpoint) => apiClient.get(endpoint));
 export const createAutoReplyRule = (payload) =>
   tryAutoReplyEndpoints((endpoint) =>
-    apiClient.post(endpoint, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    apiClient.post(endpoint, payload, { headers: { 'Content-Type': 'application/json' } }),
   );
-
 export const updateAutoReplyRule = (id, payload) =>
-  apiClient.put(`/api/whatsapp/auto-reply/${id}`, payload, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-export const deleteAutoReplyRule = (id) =>
-  apiClient.delete(`/api/whatsapp/auto-reply/${id}`);
-
-export const toggleAutoReplyRule = (id) =>
-  apiClient.patch(`/api/whatsapp/auto-reply/${id}/toggle`);
+  apiClient.put(`/api/whatsapp/auto-reply/${id}`, payload, { headers: { 'Content-Type': 'application/json' } });
+export const deleteAutoReplyRule = (id) => apiClient.delete(`/api/whatsapp/auto-reply/${id}`);
+export const toggleAutoReplyRule = (id) => apiClient.patch(`/api/whatsapp/auto-reply/${id}/toggle`);
 
 export const uploadToCloudinary = async ({ file, type, cloudName, uploadPreset }) => {
-  const resolvedCloudName =
-    cloudName || import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dadcprflr';
-  const resolvedUploadPreset =
-    uploadPreset ||
-    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET ||
-    'mern-images';
+  const resolvedCloudName = cloudName || import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dadcprflr';
+  const resolvedUploadPreset = uploadPreset || import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'mern-images';
 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', resolvedUploadPreset);
 
-  const resourceType = getCloudinaryResourceType({
-    type,
-    fileType: file?.type,
-  });
-
+  const resourceType = getCloudinaryResourceType({ type, fileType: file?.type });
   const endpoint = `https://api.cloudinary.com/v1_1/${resolvedCloudName}/${resourceType}/upload`;
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    body: formData,
-  });
+  const response = await fetch(endpoint, { method: 'POST', body: formData });
 
   let data = {};
   try {

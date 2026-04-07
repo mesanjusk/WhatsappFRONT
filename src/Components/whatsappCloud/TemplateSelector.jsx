@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   FormControl,
   Grid,
   InputLabel,
@@ -17,16 +18,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useTemplates } from '../../hooks/useTemplates';
-
-const getVariableCount = (body) => {
-  const matches = String(body || '').match(/\{\{\d+\}\}/g) || [];
-  const numbers = matches
-    .map((token) => Number(token.replace(/\D/g, '')))
-    .filter((value) => Number.isFinite(value));
-
-  if (!numbers.length) return 0;
-  return Math.max(...numbers);
-};
+import {
+  buildTemplatePreview,
+  getTemplateButtonsComponent,
+  getTemplateFooterComponent,
+  getTemplateHeaderComponent,
+  getTemplateVariableCount,
+} from '../../utils/whatsappTemplates';
 
 export default function TemplateSelector({ selectedTemplate, onTemplateChange, disabled = false }) {
   const { templates, isLoading, error, isEmpty, refetchTemplates } = useTemplates();
@@ -34,24 +32,27 @@ export default function TemplateSelector({ selectedTemplate, onTemplateChange, d
   const resolvedSelectedTemplate = useMemo(() => {
     if (!selectedTemplate?.name) return null;
 
-    return templates.find(
-      (template) =>
-        template.name === selectedTemplate.name &&
-        template.language === selectedTemplate.language
-    ) || selectedTemplate;
+    return (
+      templates.find(
+        (template) =>
+          template.name === selectedTemplate.name && template.language === selectedTemplate.language,
+      ) || selectedTemplate
+    );
   }, [templates, selectedTemplate]);
 
-  const variableCount = getVariableCount(resolvedSelectedTemplate?.body);
-  const parameters = Array.from({ length: variableCount }).map((_, index) => selectedTemplate?.parameters?.[index] || '');
+  const variableCount = getTemplateVariableCount(resolvedSelectedTemplate);
+  const parameters = Array.from({ length: variableCount }).map(
+    (_, index) => selectedTemplate?.parameters?.[index] || '',
+  );
 
-  const preview = useMemo(() => {
-    if (!resolvedSelectedTemplate?.body) return '';
+  const preview = useMemo(
+    () => buildTemplatePreview(resolvedSelectedTemplate, parameters),
+    [resolvedSelectedTemplate, parameters],
+  );
 
-    return parameters.reduce(
-      (text, param, index) => text.replaceAll(`{{${index + 1}}}`, param || `{{${index + 1}}}`),
-      resolvedSelectedTemplate.body
-    );
-  }, [resolvedSelectedTemplate, parameters]);
+  const header = getTemplateHeaderComponent(resolvedSelectedTemplate);
+  const footer = getTemplateFooterComponent(resolvedSelectedTemplate);
+  const buttons = getTemplateButtonsComponent(resolvedSelectedTemplate)?.buttons || [];
 
   const handleSelect = (value) => {
     if (!value) {
@@ -61,23 +62,21 @@ export default function TemplateSelector({ selectedTemplate, onTemplateChange, d
 
     const parsed = JSON.parse(value);
     const template = templates.find(
-      (item) => item.name === parsed.name && item.language === parsed.language
+      (item) => item.name === parsed.name && item.language === parsed.language,
     );
 
     if (!template) return;
 
     onTemplateChange({
       ...template,
-      parameters: Array.from({ length: getVariableCount(template.body) }).map(() => ''),
+      parameters: Array.from({ length: getTemplateVariableCount(template) }).map(() => ''),
     });
   };
 
   const updateParameter = (index, value) => {
     onTemplateChange({
       ...(resolvedSelectedTemplate || {}),
-      parameters: parameters.map((param, currentIndex) =>
-        currentIndex === index ? value : param
-      ),
+      parameters: parameters.map((param, currentIndex) => (currentIndex === index ? value : param)),
     });
   };
 
@@ -101,10 +100,7 @@ export default function TemplateSelector({ selectedTemplate, onTemplateChange, d
           >
             <MenuItem value=""><em>Select template</em></MenuItem>
             {templates.map((template) => (
-              <MenuItem
-                key={`${template.name}-${template.language}`}
-                value={JSON.stringify({ name: template.name, language: template.language })}
-              >
+              <MenuItem key={`${template.name}-${template.language}`} value={JSON.stringify({ name: template.name, language: template.language })}>
                 {template.name} ({template.language}) • {template.category}
               </MenuItem>
             ))}
@@ -141,8 +137,35 @@ export default function TemplateSelector({ selectedTemplate, onTemplateChange, d
             ) : null}
 
             <Box sx={{ mt: 2, borderRadius: 2, bgcolor: 'grey.100', p: 1.5 }}>
-              <Typography variant="caption" fontWeight={700} color="text.secondary">Preview</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>{preview || resolvedSelectedTemplate.body}</Typography>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography variant="caption" fontWeight={700} color="text.secondary">Preview</Typography>
+                <Chip size="small" label={resolvedSelectedTemplate.category} />
+                <Chip size="small" label={resolvedSelectedTemplate.language} variant="outlined" />
+              </Stack>
+
+              {header?.format ? (
+                <Typography variant="caption" sx={{ mt: 1, display: 'block' }} color="text.secondary">
+                  Header: {header.format}
+                </Typography>
+              ) : null}
+
+              <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                {preview || resolvedSelectedTemplate.body}
+              </Typography>
+
+              {footer?.text ? (
+                <Typography variant="caption" sx={{ mt: 1, display: 'block' }} color="text.secondary">
+                  {footer.text}
+                </Typography>
+              ) : null}
+
+              {buttons.length > 0 ? (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                  {buttons.map((button, index) => (
+                    <Chip key={`${button?.text || 'button'}-${index}`} size="small" label={button?.text || `Button ${index + 1}`} variant="outlined" />
+                  ))}
+                </Stack>
+              ) : null}
             </Box>
           </>
         ) : null}
