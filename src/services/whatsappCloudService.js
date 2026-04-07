@@ -2,13 +2,18 @@ import apiClient from '../apiClient';
 import { getTemplateVariableCount } from '../utils/whatsappTemplates';
 
 const buildBodyParameters = (template) => {
-  const variableCount = getTemplateVariableCount(template);
+  const variableCount =
+    Number(template?.variableCount) || getTemplateVariableCount(template);
+
   if (!variableCount) return [];
 
-  const rawParameters = Array.isArray(template?.parameters) ? template.parameters : [];
+  const rawParameters = Array.isArray(template?.parameters)
+    ? template.parameters
+    : [];
+
   return Array.from({ length: variableCount }).map((_, index) => ({
     type: 'text',
-    text: String(rawParameters[index] ?? ''),
+    text: String(rawParameters[index] ?? '-'), // ✅ NEVER empty
   }));
 };
 
@@ -18,7 +23,13 @@ export const buildTemplatePayload = ({ to, template }) => {
   return {
     to,
     template_name: template?.name,
-    language: template?.language,
+
+    // ✅ FIXED LANGUAGE FORMAT
+    language:
+      typeof template?.language === 'string'
+        ? { code: template.language }
+        : template?.language || { code: 'en_US' },
+
     components: bodyParameters.length
       ? [
           {
