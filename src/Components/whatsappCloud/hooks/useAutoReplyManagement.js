@@ -52,7 +52,7 @@ export const normalizeRules = (list) =>
 export function useAutoReplyManagement() {
   const [rules, setRules] = useState([]);
   const [fallbackReply, setFallbackReply] = useState(
-    'Thanks for your message. Our team will reply shortly.'
+    'Auto Thanks for your message. Our team will reply shortly.'
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState(null);
